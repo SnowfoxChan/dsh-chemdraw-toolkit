@@ -46,7 +46,7 @@ dsh plugin --profile <your-profile> add dsh-chemdraw-toolkit
 From GitHub source:
 
 ```sh
-dsh plugin --profile <your-profile> add github:OWNER/dsh-chemdraw-toolkit
+dsh plugin --profile <your-profile> add github:SnowfoxChan/dsh-chemdraw-toolkit
 ```
 
 Then restart DSH (or toggle the plugin off/on in **Settings → Plugins**). The seven tools
