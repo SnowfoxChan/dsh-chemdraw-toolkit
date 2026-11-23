@@ -1,0 +1,8 @@
+# dsh-chemdraw-toolkit bundle layer: mounted by `dsh plugin add` / the Settings ->
+# Plugins page, so a profile gets this row without manual cordis.patch.yml edits.
+#
+# Host-only plugin: no client bundle, it registers agent tools (chem_*).
+
+- insert:
+    - id: chemdraw-tools
+      name: dsh-chemdraw-toolkit

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "ChemDraw Toolkit",
+    "description": "Draw and beautify chemical structures with ChemDraw, predict 1H/13C NMR spectra with ChemNMR, convert between cdx/cdxml/mol/smiles/InChI/SVG/PNG, and recognise structures from images."
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "name": "dsh-chemdraw-toolkit",
+  "version": "0.1.0",
+  "description": "Agent tools that drive a local ChemDraw installation on Windows: draw and beautify structures, predict 1H/13C NMR with ChemNMR, convert chemical formats and recognise structures from images.",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "chemdraw",
+    "chemistry",
+    "chemscript",
+    "nmr",
+    "structure",
+    "cdx"
+  ],
+  "type": "module",
+  "main": "index.js",
+  "icon": "icon.svg",
+  "exports": {
+    ".": "./index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "backend",
+    "locale",
+    "icon.svg",
+    "cordis.patch.yml",
+    "screenshots.json",
+    "docs/screenshots",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OWNER/dsh-chemdraw-toolkit.git"
+  },
+  "homepage": "https://github.com/OWNER/dsh-chemdraw-toolkit",
+  "bugs": {
+    "url": "https://github.com/OWNER/dsh-chemdraw-toolkit/issues"
+  },
+  "license": "MIT"
+}
