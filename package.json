@@ -1,6 +1,6 @@
 {
   "name": "dsh-chemdraw-toolkit",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Agent tools that drive a local ChemDraw + Chem3D installation on Windows: draw and beautify structures, predict 1H/13C NMR with ChemNMR, build 3D models with MM2, convert chemical formats and recognise structures from images.",
   "keywords": [
     "dsh",

@@ -690,6 +690,9 @@ function toolDefinitions(cfg) {
           if (value.steric_energy !== undefined && value.steric_energy !== null) metrics.push(`MM2 steric energy ${fmtNum(value.steric_energy, 3)} kcal/mol`);
           if (value.rms_gradient !== undefined && value.rms_gradient !== null) metrics.push(`RMS gradient ${fmtNum(value.rms_gradient, 3)}`);
           if (metrics.length) lines.push('', metrics.join(' | '));
+          if (Number(value.rms_gradient) > 20) {
+            lines.push('', 'Note: MM2 stopped short of full convergence for this structure, so the energy is a rough value; the geometry is still a usable starting model.');
+          }
           lines.push('', 'Files:');
           if (value.mol) lines.push(`  mol: ${value.mol}`);
           if (value.png) lines.push(`  png: ${value.png}${value.png_width ? ` (${value.png_width}x${value.png_height})` : ''}`);

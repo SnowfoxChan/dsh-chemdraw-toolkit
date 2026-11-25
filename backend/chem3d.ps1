@@ -167,8 +167,12 @@ public static class Chem3DRun
             try { doc.SaveAs(c3xmlPath); gotC3xml = System.IO.File.Exists(c3xmlPath); } catch { gotC3xml = false; }
 
             double steric = double.NaN, rms = double.NaN;
-            try { steric = Convert.ToDouble(doc.StericEnergy); } catch { }
-            try { rms = Convert.ToDouble(doc.RMSGradient); } catch { }
+            for (int attempt = 0; attempt < 6 && (double.IsNaN(steric) || double.IsNaN(rms)); attempt++)
+            {
+                try { if (double.IsNaN(steric)) steric = Convert.ToDouble(doc.StericEnergy); } catch { }
+                try { if (double.IsNaN(rms)) rms = Convert.ToDouble(doc.RMSGradient); } catch { }
+                if (double.IsNaN(steric) || double.IsNaN(rms)) System.Threading.Thread.Sleep(250);
+            }
 
             sb.Append("{\"ok\":true");
             sb.Append(",\"png\":\"" + Esc(finalPng) + "\"");
@@ -252,10 +256,15 @@ try { $obj = $results | ConvertFrom-Json } catch { $obj = $null }
 if ($obj -and $obj.ok) {
   try {
     $lines = [System.IO.File]::ReadAllLines([string]$obj.mol)
-    if ($lines.Count -ge 4) {
-      $counts = $lines[3].Trim().Split(' ')
-      $obj | Add-Member -NotePropertyName atoms -NotePropertyValue ([int]$counts[0]) -Force
-      $obj | Add-Member -NotePropertyName bonds -NotePropertyValue ([int]$counts[1]) -Force
+    $countsLine = $null
+    foreach ($line in $lines) { if ($line -match 'V2000|V3000') { $countsLine = $line; break } }
+    if (-not $countsLine -and $lines.Count -ge 4) { $countsLine = $lines[3] }
+    if ($countsLine) {
+      $counts = $countsLine.Trim() -split '\s+'
+      if ($counts.Count -ge 2) {
+        $obj | Add-Member -NotePropertyName atoms -NotePropertyValue ([int]$counts[0]) -Force
+        $obj | Add-Member -NotePropertyName bonds -NotePropertyValue ([int]$counts[1]) -Force
+      }
     }
   } catch { }
   # Chem3D exports the model view at roughly 550 px; scale it up once so the
