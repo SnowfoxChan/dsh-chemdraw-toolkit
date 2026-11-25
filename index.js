@@ -117,6 +117,18 @@ async function runChemDraw(cfg, args) {
   return parseEnvelope(stdout, stderr, code, 'ChemDraw automation');
 }
 
+async function runChem3D(cfg, args) {
+  const dir = await tmpDir();
+  const argFile = writeJson(path.join(dir, 'args.json'), args);
+  const script = path.join(BACKEND, 'chem3d.ps1');
+  const { code, stdout, stderr } = await execFile(
+    'powershell.exe',
+    ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, '-ArgsJson', argFile],
+    { timeoutMs: cfg.timeoutMs },
+  );
+  return parseEnvelope(stdout, stderr, code, 'Chem3D automation');
+}
+
 function resolveOutDir(cfg, requested) {
   const dir = path.resolve(requested || cfg.outputDir);
   fs.mkdirSync(dir, { recursive: true });
@@ -329,6 +341,15 @@ function parseNmrReport(captions, nucleus) {
 }
 
 /* ------------------------------------------------------------------- tools */
+
+// C3DDisplayType values understood by Chem3D (k3DWireFrame=0 ... k3DRibbons=5).
+const DISPLAY_TYPES = {
+  wireframe: 0,
+  sticks: 1,
+  ball_and_stick: 2,
+  cylindrical: 3,
+  space_filling: 4,
+};
 
 function toolDefinitions(cfg) {
   const structureInput = {
@@ -634,6 +655,84 @@ function toolDefinitions(cfg) {
           mol_file: firstMolPath,
           image: redrawn,
           image_size: redrawnSize,
+        };
+      },
+    },
+
+    {
+      name: 'chem_3d',
+      description: 'Turn a 2D structure into a 3D conformer with Chem3D: hydrogens are added, the geometry is minimised with the MM2 force field, and a ball-and-stick (or other style) rendering is saved. Returns the 3D .mol (opens in Chem3D, PyMOL, Avogadro, Jmol) plus an optional Chem3D .c3xml and PNG.',
+      parameters: {
+        type: 'object',
+        properties: {
+          input: structureInput,
+          from: fromParam,
+          display: {
+            type: 'string',
+            enum: ['ball_and_stick', 'sticks', 'space_filling', 'wireframe', 'cylindrical'],
+            description: '3D rendering style. Defaults to ball_and_stick.',
+          },
+          iterations: { type: 'number', description: 'Maximum MM2 minimisation iterations. Defaults to 2000.' },
+          open: { type: 'boolean', description: 'Keep the Chem3D window open so the user can rotate or edit the model by hand. Defaults to false.' },
+          out_dir: outDirParam,
+          basename: basenameParam,
+        },
+        required: ['input'],
+      },
+      output: {
+        schema: objSchema,
+        render: (args, value) => {
+          const lines = [`3D model of ${structureHint(args.input, args.from)} (Chem3D, MM2 minimisation).`];
+          if (value.properties) lines.push('', formatProperties(value.properties));
+          const metrics = [];
+          if (value.atoms) metrics.push(`${value.atoms} atoms`);
+          if (value.bonds) metrics.push(`${value.bonds} bonds`);
+          if (value.steric_energy !== undefined && value.steric_energy !== null) metrics.push(`MM2 steric energy ${fmtNum(value.steric_energy, 3)} kcal/mol`);
+          if (value.rms_gradient !== undefined && value.rms_gradient !== null) metrics.push(`RMS gradient ${fmtNum(value.rms_gradient, 3)}`);
+          if (metrics.length) lines.push('', metrics.join(' | '));
+          lines.push('', 'Files:');
+          if (value.mol) lines.push(`  mol: ${value.mol}`);
+          if (value.png) lines.push(`  png: ${value.png}${value.png_width ? ` (${value.png_width}x${value.png_height})` : ''}`);
+          if (value.c3xml) lines.push(`  c3xml: ${value.c3xml}`);
+          return [{ type: 'text', text: lines.join('\n') }];
+        },
+      },
+      timeoutMs: 300000,
+      async execute(args) {
+        const outDir = resolveOutDir(cfg, args.out_dir);
+        const base = safeBase(args.basename, 'structure');
+        const structure = structureArg(args.input, args.from);
+        const props = await runPython(cfg, 'inspect', structure);
+        const exported = await runPython(cfg, 'export', { ...structure, out_dir: outDir, basename: `${base}_2d`, formats: ['mol'] });
+        const mol2d = exported.files && exported.files.mol;
+        if (!mol2d) throw new Error('could not export a 2D MOL file for Chem3D');
+        const displayType = DISPLAY_TYPES[String(args.display || 'ball_and_stick').toLowerCase()];
+        const iterations = Number.isFinite(args.iterations) ? Math.max(50, Math.min(20000, Math.round(args.iterations))) : 2000;
+        const keepOpen = args.open === true;
+        const result = await runChem3D(cfg, {
+          input: mol2d,
+          out_dir: outDir,
+          basename: base,
+          iterations,
+          open: keepOpen,
+          visible: keepOpen,
+          style: displayType === undefined ? undefined : { display_type: displayType },
+          max_edge: 1100,
+        });
+        if (!result.ok) throw new Error(result.error || 'Chem3D could not build the 3D model');
+        return {
+          ok: true,
+          properties: props,
+          mol: result.mol,
+          png: result.png,
+          png_width: result.png_width,
+          png_height: result.png_height,
+          c3xml: result.c3xml,
+          atoms: result.atoms,
+          bonds: result.bonds,
+          steric_energy: result.steric_energy,
+          rms_gradient: result.rms_gradient,
+          model: result.model,
         };
       },
     },

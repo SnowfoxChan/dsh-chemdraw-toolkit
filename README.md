@@ -1,8 +1,9 @@
 # ChemDraw Toolkit for DeepSeek Harness
 
-Seven `chem_*` tools that let a DSH agent work with **ChemDraw on Windows**: draw and
-beautify structures, predict 1H/13C NMR, convert between chemical file formats, read a
-structure out of a picture, and hand a file to the interactive ChemDraw window.
+Eight `chem_*` tools that let a DSH agent work with **ChemDraw and Chem3D on Windows**: draw
+and beautify structures, predict 1H/13C NMR, build 3D models, convert between chemical file
+formats, read a structure out of a picture, and hand a file to the interactive ChemDraw
+window.
 
 The plugin is host-only: it registers agent tools and adds no browser UI. It drives the
 ChemDraw installation that is already on the machine, through ChemDraw's own COM
@@ -15,20 +16,22 @@ chemistry model is downloaded.
 | `chem_draw` | Draw a structure from SMILES / InChI / name / `.cdx` / `.cdxml` / `.mol` / `.sdf` and save a tightly cropped PNG or SVG, plus optional `.cdx` / `.cdxml` / `.mol`. Bond length, line width, label size/font and caption size can be overridden. |
 | `chem_beautify` | Run ChemDraw's clean-up on an existing structure (tidy 2D layout, normalised bond lengths), apply the same style settings and re-export PNG / SVG / `.cdx` / `.cdxml`. |
 | `chem_nmr` | Predict a 1H or 13C spectrum with ChemNMR: per-atom shifts, the `Base + Inc.` protocol text, 1H coupling constants, and a rendered spectrum page with the shift-assignment table. |
+| `chem_3d` | Build a 3D conformer with Chem3D: hydrogens are added, the geometry is minimised with MM2, and a ball-and-stick / sticks / space-filling / wireframe picture is rendered. Returns the 3D `.mol`, an optional Chem3D `.c3xml`, the MM2 steric energy and RMS gradient. |
 | `chem_convert` | Convert between `cdx`, `cdxml`, `mol`, `sdf`, `smiles`, `inchi`, `svg`, `png`. |
 | `chem_image_to_structure` | Recognise a drawn structure in a PNG/JPEG/BMP/GIF through the CACTUS OSRA web service, then validate and redraw it with ChemDraw. `neutralize` adds back a missing acidic proton when the OCR result comes out anionic. |
 | `chem_open` | Open a structure file in the interactive ChemDraw window so the user can keep editing it by hand. |
 
 ![Structure drawn by chem_draw](docs/screenshots/1-draw.png)
 ![ChemNMR 1H prediction](docs/screenshots/4-nmr-1h.png)
+![3D model built by chem_3d](docs/screenshots/6-3d.png)
 
 ## Requirements
 
 - **Windows x64** — the plugin talks to ChemDraw over COM (`ChemDraw_x64.Application`) and
   to ChemScript through a native Python extension, so it does not run on macOS or Linux.
-- **Revvity ChemDraw Suite 23.x installed** (ChemDraw + ChemScript). ChemDraw 23.1.1 was
-  the version used for development; older versions that still expose ChemNMR and the COM
-  automation server should work but are untested.
+- **Revvity ChemDraw Suite 23.x installed** (ChemDraw + ChemScript + Chem3D). ChemDraw
+  23.1.1 was the version used for development; older versions that still expose ChemNMR,
+  Chem3D's MM2 job object and the COM automation server should work but are untested.
 - **Python 3.10** — `ChemScript\Lib` ships `_ChemScriptForPy310.pyd` (and a 3.9 build).
   The DSH-bundled Python is 3.12 and cannot import it, so a separate 3.10 interpreter is
   needed; set `pythonPath` if it is not at the default location.
@@ -49,7 +52,7 @@ From GitHub source:
 dsh plugin --profile <your-profile> add github:SnowfoxChan/dsh-chemdraw-toolkit
 ```
 
-Then restart DSH (or toggle the plugin off/on in **Settings → Plugins**). The seven tools
+Then restart DSH (or toggle the plugin off/on in **Settings → Plugins**). The eight tools
 appear in the agent's tool list immediately after the plugin is enabled.
 
 Default paths, all overridable through the plugin config:
@@ -68,6 +71,7 @@ Default paths, all overridable through the plugin config:
 chem_draw ibuprofen                       -> ibuprofen.png (575x472) + ibuprofen.cdxml
 chem_beautify ./messy.cdx                 -> tidy PNG + CDXML
 chem_nmr aspirin nucleus=13C              -> 9 shifts, protocol text, spectrum PNG
+chem_3d aspirin display=space_filling     -> MM2-minimised 3D .mol + 3D picture
 chem_image_to_structure screenshot.png    -> SMILES + formula + IUPAC name + redrawn PNG
 chem_convert structure.cdx formats=sdf,smiles
 ```
@@ -78,10 +82,15 @@ tool.
 
 ## How it works
 
-- `index.js` registers the tools and shells out to two backends:
+- `index.js` registers the tools and shells out to three backends:
   `backend/chem.py` (Python 3.10 + ChemScript) for parsing, properties, names and
-  format conversion, and `backend/chemdraw.ps1` (Windows PowerShell + COM) for anything
-  that needs a rendering engine: draw, clean, NMR, open.
+  format conversion, `backend/chemdraw.ps1` (Windows PowerShell + COM) for anything
+  that needs a rendering engine: draw, clean, NMR, open, and `backend/chem3d.ps1`
+  (PowerShell + Chem3D COM) for 3D conformers.
+- Chem3D's automation server does not publish a registered type library, so `chem3d.ps1`
+  compiles a small C# helper that binds the COM objects late-bound, runs the MM2 job
+  object, picks the largest zoom whose render does not touch the image border, and saves
+  the 3D `.mol` / PNG / `.c3xml`.
 - ChemNMR is driven by executing ChemDraw's own menu command (1H: 370, 13C: 371). It
   opens a new document with the predicted spectrum, the annotated structure and a
   protocol document; the shift and coupling tables are parsed out of that document's
@@ -100,11 +109,16 @@ tool.
   `true`) fixes that, at the cost of also "fixing" a genuine carboxylate salt — pass
   `neutralize: false` for real salts.
 - Structure-to-name and name-to-structure quality is ChemScript's, not the plugin's.
+- `chem_3d` uses Chem3D's MM2 force field and its own conformer search, not a modern
+  conformer generator: ring puckering and hydrogen bonding are reasonable but the result
+  is a single minimised conformer, not an ensemble. Rendering is limited by Chem3D's
+  viewport; the plugin upscales the picture when Chem3D exports a small one.
 
 ## 中文说明
 
 这个插件把本机已安装的 **ChemDraw 23** 变成 DSH 智能体的能力：画结构、批量美化、
-用 ChemNMR 预测 1H/13C 核磁、在 cdx/cdxml/mol/sdf/smiles/inchi/svg 之间互转、从图片里
+用 ChemNMR 预测 1H/13C 核磁、用 Chem3D 把平面结构变成 MM2 优化过的立体结构（可出球棍/
+空间填充图）、在 cdx/cdxml/mol/sdf/smiles/inchi/svg 之间互转、从图片里
 识别结构并重绘，另外可以把文件直接在 ChemDraw 窗口里打开继续编辑。
 
 需要 Windows x64、已安装 ChemDraw Suite 23.x（带 ChemScript）、Python 3.10；只有

@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "ChemDraw 化学工具箱",
-    "description": "用 ChemDraw 画结构与美化排版、用 ChemNMR 预测 1H/13C 核磁谱、在 cdx/cdxml/mol/SMILES/InChI/SVG/PNG 之间转换，并支持从图片识别化学结构。"
+    "description": "用 ChemDraw 画结构与美化排版、用 ChemNMR 预测 1H/13C 核磁谱、用 Chem3D 生成 MM2 优化的三维结构、在 cdx/cdxml/mol/SMILES/InChI/SVG/PNG 之间转换，并支持从图片识别化学结构。"
   }
 }

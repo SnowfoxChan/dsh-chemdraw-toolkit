@@ -1,15 +1,18 @@
 {
   "name": "dsh-chemdraw-toolkit",
-  "version": "0.1.0",
-  "description": "Agent tools that drive a local ChemDraw installation on Windows: draw and beautify structures, predict 1H/13C NMR with ChemNMR, convert chemical formats and recognise structures from images.",
+  "version": "0.2.0",
+  "description": "Agent tools that drive a local ChemDraw + Chem3D installation on Windows: draw and beautify structures, predict 1H/13C NMR with ChemNMR, build 3D models with MM2, convert chemical formats and recognise structures from images.",
   "keywords": [
     "dsh",
     "dsh-plugin",
     "deepseek-harness",
     "chemdraw",
+    "chem3d",
     "chemistry",
     "chemscript",
     "nmr",
+    "3d",
+    "conformer",
     "structure",
     "cdx"
   ],
