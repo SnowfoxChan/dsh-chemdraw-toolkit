@@ -228,7 +228,15 @@ try {
   $maxEdge = 1100; if ($opt.max_edge) { $maxEdge = [int]$opt.max_edge }
 
   $before = @(Get-Process Chem3D -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
-  $results = [Chem3DRun]::Execute($inPath, $outDir, $base, $iterations, $rmsg, $visible, $keep, $atomSize, $bondWidth, $displayType, $bgColor, $maxEdge)
+  # Chem3D's COM activation occasionally fails right after a previous instance
+  # shuts down (0x800711C7 / 0x80040154); retry a few times before giving up.
+  for ($attempt = 0; $attempt -lt 3; $attempt++) {
+    $results = [Chem3DRun]::Execute($inPath, $outDir, $base, $iterations, $rmsg, $visible, $keep, $atomSize, $bondWidth, $displayType, $bgColor, $maxEdge)
+    if ($results -notmatch '"ok":false') { break }
+    if ($results -notmatch '800711C7|80040154|80080005|COMException') { break }
+    Start-Sleep -Seconds 2
+    Get-Process Chem3D -ErrorAction SilentlyContinue | Where-Object { $before -notcontains $_.Id } | Stop-Process -Force -ErrorAction SilentlyContinue
+  }
   if (-not $keep) {
     Start-Sleep -Milliseconds 400
     Get-Process Chem3D -ErrorAction SilentlyContinue | Where-Object { $before -notcontains $_.Id } | Stop-Process -Force -ErrorAction SilentlyContinue
